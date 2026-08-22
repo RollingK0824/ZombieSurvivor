@@ -738,9 +738,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayerCharacter
       objectReference: {fileID: 0}
-    - target: {fileID: 1593522136333475392, guid: c94e0acc385bc1f4d8791ac26ec3f2b4, type: 3}
-      propertyPath: m_IsActive
+    - target: {fileID: 2265334190443008020, guid: c94e0acc385bc1f4d8791ac26ec3f2b4, type: 3}
+      propertyPath: m_InScenePlaced
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2265334190443008020, guid: c94e0acc385bc1f4d8791ac26ec3f2b4, type: 3}
+      propertyPath: GlobalObjectIdHash
+      value: 3318141069
+      objectReference: {fileID: 0}
+    - target: {fileID: 2265334190443008020, guid: c94e0acc385bc1f4d8791ac26ec3f2b4, type: 3}
+      propertyPath: InScenePlacedSourceGlobalObjectIdHash
+      value: 3180417510
       objectReference: {fileID: 0}
     - target: {fileID: 3425698378602355277, guid: c94e0acc385bc1f4d8791ac26ec3f2b4, type: 3}
       propertyPath: m_AnchorMax.x
@@ -789,10 +797,6 @@ PrefabInstance:
     - target: {fileID: 8240959539872071517, guid: c94e0acc385bc1f4d8791ac26ec3f2b4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8726360429899939156, guid: c94e0acc385bc1f4d8791ac26ec3f2b4, type: 3}
-      propertyPath: m_TargetGraphic
-      value: 
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
