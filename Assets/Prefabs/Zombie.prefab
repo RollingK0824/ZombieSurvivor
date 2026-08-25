@@ -109,6 +109,7 @@ GameObject:
   - component: {fileID: 6399297939488698989}
   - component: {fileID: 1810216340262499902}
   - component: {fileID: 5867276797151562052}
+  - component: {fileID: -5542442482737030441}
   m_Layer: 0
   m_Name: Zombie
   m_TagString: Untagged
@@ -411,6 +412,24 @@ MonoBehaviour:
   SwitchTransformSpaceWhenParented: 0
   Interpolate: 1
   SlerpPosition: 0
+--- !u!114 &-5542442482737030441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5389426617978767859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe71cfa6b103f428f8df2b1169fef1aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PositionSync
+  ShowTopMostFoldoutHeaderGroup: 1
+  networkPosition:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: {x: 0, y: 0}
 --- !u!1001 &565367050814217145
 PrefabInstance:
   m_ObjectHideFlags: 0

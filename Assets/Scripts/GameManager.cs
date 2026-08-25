@@ -1,7 +1,8 @@
-﻿using UnityEngine;
+﻿using Unity.Netcode;
+using UnityEngine;
 
 // 점수와 게임 오버 여부를 관리하는 게임 매니저
-public class GameManager : MonoBehaviour {
+public class GameManager : NetworkBehaviour {
     // 싱글톤 접근용 프로퍼티
     public static GameManager instance
     {
@@ -56,5 +57,36 @@ public class GameManager : MonoBehaviour {
         isGameover = true;
         // 게임 오버 UI를 활성화
         UIManager.instance.SetActiveGameoverUI(true);
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        if(IsServer)
+        {
+            SpawnPlayer();
+        }
+        isGameover = false;
+
+        NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        base.OnNetworkDespawn();
+        NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
+    }
+
+    private void OnClientDisconnected(ulong clientId)
+    {
+        //  클라이언트가 해제되면 화면에서 삭제 처리
+    }
+
+    private void SpawnPlayer()
+    {
+        var playerPrefab = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
+
+        Debug.Log($"Join Player Count: {NetworkManager.ConnectedClientsList.Count}");
     }
 }

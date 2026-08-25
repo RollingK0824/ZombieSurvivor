@@ -150,12 +150,6 @@ public class LobbyManager : NetworkBehaviour
     // 게임을 시작할 수 있는지 확인
     private bool CheckIsReadyToStart()
     {
-        // 최소한 2명의 플레이어가 있어야 게임을 시작할 수 있음
-        if (_clientReadyStates.Count < MinimumReadyCountToStartGame)
-        {
-            return false;
-        }
-
         // 모든 플레이어가 준비 상태여야 게임을 시작할 수 있음
         foreach (var isReady in _clientReadyStates.Values)
         {

@@ -13,6 +13,17 @@ public class PositionSync : NetworkBehaviour
 
     private void FixedUpdate()
     {
-        
+        if (IsOwner)
+        {
+            if (Vector2.Distance(_lastPosition, transform.position) > 0.001f)
+            {
+                _lastPosition = (Vector2)transform.position;
+                networkPosition.Value = _lastPosition;
+            }
+        }
+        else
+        {
+            transform.position = (Vector3)networkPosition.Value;
+        }
     }
 }
