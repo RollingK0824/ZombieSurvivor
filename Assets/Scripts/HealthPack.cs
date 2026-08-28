@@ -1,7 +1,8 @@
-﻿using UnityEngine;
+using Unity.Netcode;
+using UnityEngine;
 
-// 체력을 회복하는 아이템
-public class HealthPack : MonoBehaviour, IItem {
+// 체력을 회복하는 아이템 (Netcode 호환)
+public class HealthPack : NetworkBehaviour, IItem {
     public float health = 50; // 체력을 회복할 수치
 
     public void Use(GameObject target) {
@@ -15,7 +16,15 @@ public class HealthPack : MonoBehaviour, IItem {
             life.RestoreHealth(health);
         }
 
-        // 사용되었으므로, 자신을 파괴
-        Destroy(gameObject);
+        // 서버 권한으로 자신을 Despawn
+        NetworkObject netObj = GetComponent<NetworkObject>();
+        if (netObj != null && netObj.IsSpawned)
+        {
+            netObj.Despawn();
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 }

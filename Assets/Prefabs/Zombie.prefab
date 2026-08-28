@@ -106,8 +106,8 @@ GameObject:
   - component: {fileID: 5539452806921585590}
   - component: {fileID: 6059172229210094581}
   - component: {fileID: 7953689641791522655}
-  - component: {fileID: 6399297939488698989}
   - component: {fileID: 1810216340262499902}
+  - component: {fileID: 6399297939488698989}
   - component: {fileID: 5867276797151562052}
   - component: {fileID: -5542442482737030441}
   m_Layer: 0
@@ -319,27 +319,6 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
---- !u!114 &6399297939488698989
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5389426617978767859}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c1335f80b57e1564281355161c54162b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Zombie
-  startingHealth: 100
-  whatIsTarget:
-    serializedVersion: 2
-    m_Bits: 64
-  hitEffect: {fileID: 389554359574601271}
-  deathSound: {fileID: 8300000, guid: b86f03005ed394911b43027aeaaedeb7, type: 3}
-  hitSound: {fileID: 8300000, guid: c3d8accfc053f004ca665a1c8c4a6919, type: 3}
-  damage: 20
-  timeBetAttack: 0.5
 --- !u!114 &1810216340262499902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -366,6 +345,38 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!114 &6399297939488698989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5389426617978767859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1335f80b57e1564281355161c54162b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Zombie
+  ShowTopMostFoldoutHeaderGroup: 1
+  startingHealth: 100
+  healthNetwork:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 100
+  deadNetwork:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+  whatIsTarget:
+    serializedVersion: 2
+    m_Bits: 64
+  hitEffect: {fileID: 389554359574601271}
+  deathSound: {fileID: 8300000, guid: b86f03005ed394911b43027aeaaedeb7, type: 3}
+  hitSound: {fileID: 8300000, guid: c3d8accfc053f004ca665a1c8c4a6919, type: 3}
+  damage: 20
+  timeBetAttack: 0.5
 --- !u!114 &5867276797151562052
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -429,7 +440,7 @@ MonoBehaviour:
     UpdateTraits:
       MinSecondsBetweenUpdates: 0
       MaxSecondsBetweenUpdates: 0
-    m_InternalValue: {x: 0, y: 0}
+    m_InternalValue: {x: 0, y: 0, z: 0}
 --- !u!1001 &565367050814217145
 PrefabInstance:
   m_ObjectHideFlags: 0

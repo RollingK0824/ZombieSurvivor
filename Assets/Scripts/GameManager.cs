@@ -1,92 +1,262 @@
-﻿using Unity.Netcode;
+using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
-// 점수와 게임 오버 여부를 관리하는 게임 매니저
+// 점수와 게임 오버 여부를 관리하는 게임 매니저 (Netcode 호환)
 public class GameManager : NetworkBehaviour {
     // 싱글톤 접근용 프로퍼티
     public static GameManager instance
     {
         get
         {
-            // 만약 싱글톤 변수에 아직 오브젝트가 할당되지 않았다면
             if (m_instance == null)
             {
-                // 씬에서 GameManager 오브젝트를 찾아 할당
                 m_instance = FindObjectOfType<GameManager>();
             }
-
-            // 싱글톤 오브젝트를 반환
             return m_instance;
         }
     }
 
-    private static GameManager m_instance; // 싱글톤이 할당될 static 변수
+    private static GameManager m_instance; // 싱글톤 변수
 
-    private int score = 0; // 현재 게임 점수
-    public bool isGameover { get; private set; } // 게임 오버 상태
+    public Transform[] playerSpawnPoints; // 플레이어 스폰 위치들
+    public GameObject fallbackPlayerPrefab; // 백업용 플레이어 프리팹
+
+    public NetworkVariable<int> scoreNetwork = new NetworkVariable<int>(
+        0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public NetworkVariable<bool> isGameoverNetwork = new NetworkVariable<bool>(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public int score => scoreNetwork.Value; // 현재 게임 점수
+    public bool isGameover => isGameoverNetwork.Value; // 게임 오버 상태
 
     private void Awake() {
-        // 씬에 싱글톤 오브젝트가 된 다른 GameManager 오브젝트가 있다면
-        if (instance != this)
+        if (instance != this && m_instance != null)
         {
-            // 자신을 파괴
             Destroy(gameObject);
+        }
+        else
+        {
+            m_instance = this;
         }
     }
 
     private void Start() {
-        // 플레이어 캐릭터의 사망 이벤트 발생시 게임 오버
-        FindObjectOfType<PlayerHealth>().onDeath += EndGame;
-    }
-
-    // 점수를 추가하고 UI 갱신
-    public void AddScore(int newScore) {
-        // 게임 오버가 아닌 상태에서만 점수 증가 가능
-        if (!isGameover)
+        bool isOffline = NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening;
+        if (isOffline)
         {
-            // 점수 추가
-            score += newScore;
-            // 점수 UI 텍스트 갱신
-            UIManager.instance.UpdateScoreText(score);
+            SpawnOfflinePlayer();
         }
     }
 
-    // 게임 오버 처리
-    public void EndGame() {
-        // 게임 오버 상태를 참으로 변경
-        isGameover = true;
-        // 게임 오버 UI를 활성화
-        UIManager.instance.SetActiveGameoverUI(true);
+    private void SpawnOfflinePlayer()
+    {
+        PlayerHealth[] existingPlayers = FindObjectsOfType<PlayerHealth>();
+        if (existingPlayers != null && existingPlayers.Length > 0) return;
+
+        Vector3 spawnPos = Vector3.zero;
+        Quaternion spawnRot = Quaternion.identity;
+
+        if (playerSpawnPoints != null && playerSpawnPoints.Length > 0 && playerSpawnPoints[0] != null)
+        {
+            spawnPos = playerSpawnPoints[0].position;
+            spawnRot = playerSpawnPoints[0].rotation;
+        }
+
+        GameObject prefabToSpawn = fallbackPlayerPrefab;
+        if (prefabToSpawn == null && NetworkManager.Singleton != null && NetworkManager.Singleton.NetworkConfig != null)
+        {
+            prefabToSpawn = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
+        }
+
+        if (prefabToSpawn != null)
+        {
+            GameObject playerInstance = Instantiate(prefabToSpawn, spawnPos, spawnRot);
+            PlayerHealth playerHealth = playerInstance.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.onDeath += CheckAllPlayersDead;
+            }
+        }
     }
 
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
 
-        if(IsServer)
-        {
-            SpawnPlayer();
-        }
-        isGameover = false;
+        scoreNetwork.OnValueChanged += OnScoreChanged;
+        isGameoverNetwork.OnValueChanged += OnGameoverChanged;
 
-        NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+        if (IsServer)
+        {
+            scoreNetwork.Value = 0;
+            isGameoverNetwork.Value = false;
+
+            SpawnPlayers();
+        }
+
+        UpdateScoreUI();
+        UpdateGameOverUI();
+
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.OnClientDisconnectCallback += OnClientDisconnected;
+        }
     }
 
     public override void OnNetworkDespawn()
     {
         base.OnNetworkDespawn();
-        NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
+        scoreNetwork.OnValueChanged -= OnScoreChanged;
+        isGameoverNetwork.OnValueChanged -= OnGameoverChanged;
+
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
+    }
+
+    private void OnScoreChanged(int previous, int current) {
+        UpdateScoreUI();
+    }
+
+    private void OnGameoverChanged(bool previous, bool current) {
+        UpdateGameOverUI();
+    }
+
+    private void UpdateScoreUI() {
+        if (UIManager.instance != null)
+        {
+            UIManager.instance.UpdateScoreText(scoreNetwork.Value);
+        }
+    }
+
+    private void UpdateGameOverUI() {
+        if (UIManager.instance != null)
+        {
+            UIManager.instance.SetActiveGameoverUI(isGameoverNetwork.Value);
+        }
+    }
+
+    // 점수를 추가 (서버 권한)
+    public void AddScore(int newScore) {
+        if (!IsServer) return;
+
+        if (!isGameoverNetwork.Value)
+        {
+            scoreNetwork.Value += newScore;
+        }
+    }
+
+    // 게임 오버 처리 (서버 권한)
+    public void EndGame() {
+        if (!IsServer) return;
+
+        isGameoverNetwork.Value = true;
     }
 
     private void OnClientDisconnected(ulong clientId)
     {
-        //  클라이언트가 해제되면 화면에서 삭제 처리
+        if (IsServer)
+        {
+            CheckAllPlayersDead();
+        }
     }
 
-    private void SpawnPlayer()
-    {
-        var playerPrefab = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
+    private void ClearExistingPlayers() {
+        if (!IsServer) return;
+        PlayerHealth[] oldPlayers = FindObjectsOfType<PlayerHealth>();
+        foreach (var p in oldPlayers)
+        {
+            if (p != null)
+            {
+                NetworkObject netObj = p.GetComponent<NetworkObject>();
+                if (netObj != null && netObj.IsSpawned)
+                {
+                    netObj.Despawn();
+                }
+                else if (p.gameObject != null)
+                {
+                    Destroy(p.gameObject);
+                }
+            }
+        }
+    }
 
-        Debug.Log($"Join Player Count: {NetworkManager.ConnectedClientsList.Count}");
+    // 서버에서 모든 클라이언트 플레이어 캐릭터 생성
+    private void SpawnPlayers()
+    {
+        if (!IsServer) return;
+
+        ClearExistingPlayers();
+
+        var clients = NetworkManager.Singleton.ConnectedClientsList;
+        int spawnIndex = 0;
+
+        foreach (var client in clients)
+        {
+            ulong clientId = client.ClientId;
+
+            Vector3 spawnPos = Vector3.zero;
+            Quaternion spawnRot = Quaternion.identity;
+
+            if (playerSpawnPoints != null && playerSpawnPoints.Length > 0)
+            {
+                Transform sp = playerSpawnPoints[spawnIndex % playerSpawnPoints.Length];
+                spawnPos = sp.position;
+                spawnRot = sp.rotation;
+            }
+
+            GameObject prefabToSpawn = NetworkManager.Singleton.NetworkConfig.PlayerPrefab;
+            if (prefabToSpawn == null)
+            {
+                prefabToSpawn = fallbackPlayerPrefab;
+            }
+
+            if (prefabToSpawn != null)
+            {
+                GameObject playerInstance = Instantiate(prefabToSpawn, spawnPos, spawnRot);
+                NetworkObject netObj = playerInstance.GetComponent<NetworkObject>();
+
+                if (netObj != null)
+                {
+                    netObj.SpawnWithOwnership(clientId);
+                }
+
+                PlayerHealth playerHealth = playerInstance.GetComponent<PlayerHealth>();
+                if (playerHealth != null)
+                {
+                    playerHealth.onDeath += CheckAllPlayersDead;
+                }
+            }
+
+            spawnIndex++;
+        }
+    }
+
+    // 모든 플레이어 사망 여부 확인
+    private void CheckAllPlayersDead()
+    {
+        if (!IsServer) return;
+
+        PlayerHealth[] players = FindObjectsOfType<PlayerHealth>();
+        bool allDead = true;
+
+        if (players.Length == 0) return;
+
+        foreach (var player in players)
+        {
+            if (!player.dead)
+            {
+                allDead = false;
+                break;
+            }
+        }
+
+        if (allDead)
+        {
+            EndGame();
+        }
     }
 }

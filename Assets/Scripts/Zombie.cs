@@ -1,9 +1,9 @@
-﻿using System.Collections;
+using System.Collections;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.UIElements; // AI, 내비게이션 시스템 관련 코드 가져오기
 
-// 좀비 AI 구현
+// 좀비 AI 구현 (Netcode 네트워크 호환)
 public class Zombie : LivingEntity
 {
     public LayerMask whatIsTarget; // 추적 대상 레이어
@@ -23,121 +23,179 @@ public class Zombie : LivingEntity
     public float timeBetAttack = 0.5f; // 공격 간격
     private float lastAttackTime; // 마지막 공격 시점
 
+    public NetworkVariable<bool> hasTargetNetwork = new NetworkVariable<bool>(
+        false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
     // 추적할 대상이 존재하는지 알려주는 프로퍼티
     private bool hasTarget {
         get
         {
-            // 추적할 대상이 존재하고, 대상이 사망하지 않았다면 true
             if (targetEntity != null && !targetEntity.dead)
             {
                 return true;
             }
-
-            // 그렇지 않다면 false
             return false;
         }
     }
 
     private void Awake() {
-        // 초기화
         navMeshAgent = GetComponent<NavMeshAgent>();
         zombieAnimator = GetComponent<Animator>();
         zombieAudioPlayer = GetComponent<AudioSource>();
-
         zombieRenderer = GetComponentInChildren<Renderer>();
     }
 
     // 좀비 AI의 초기 스펙을 결정하는 셋업 메서드
     public void Setup(ZombieData zombieData) {
         startingHealth = zombieData.health;
-        health = zombieData.health;
         damage = zombieData.damage;
-        navMeshAgent.speed = zombieData.speed;
-        zombieRenderer.material.color = zombieData.skinColor;
+        if (navMeshAgent != null) navMeshAgent.speed = zombieData.speed;
+        
+        SetupClientRpc(zombieData.skinColor, zombieData.speed);
     }
 
-    private void Start() {
-        // 게임 오브젝트 활성화와 동시에 AI의 추적 루틴 시작
-        StartCoroutine(UpdatePath());
+    [ClientRpc]
+    private void SetupClientRpc(Color skinColor, float speed) {
+        if (zombieRenderer != null) zombieRenderer.material.color = skinColor;
+        if (navMeshAgent != null && IsServer) navMeshAgent.speed = speed;
+    }
+
+    public override void OnNetworkSpawn() {
+        base.OnNetworkSpawn();
+
+        if (!IsServer && navMeshAgent != null)
+        {
+            navMeshAgent.enabled = false; // 클라이언트에서는 NavMeshAgent를 비활성화하여 NetworkTransform과 충돌 방지
+        }
+
+        hasTargetNetwork.OnValueChanged += (prev, current) => {
+            if (zombieAnimator != null) zombieAnimator.SetBool("HasTarget", current);
+        };
+
+        if (IsServer)
+        {
+            StartCoroutine(UpdatePath());
+        }
     }
 
     private void Update() {
-        // 추적 대상의 존재 여부에 따라 다른 애니메이션 재생
-        zombieAnimator.SetBool("HasTarget", hasTarget);
+        if (zombieAnimator != null)
+        {
+            bool targetBool = IsSpawned ? hasTargetNetwork.Value : hasTarget;
+            zombieAnimator.SetBool("HasTarget", targetBool);
+        }
     }
 
-    // 주기적으로 추적할 대상의 위치를 찾아 경로 갱신
+    // 주기적으로 추적할 대상의 위치를 찾아 경로 갱신 (서버 전용)
     private IEnumerator UpdatePath()
     {
-        // 살아 있는 동안 무한 루프
+        if (!IsServer) yield break;
+
         while (!dead)
         {
             if (hasTarget)
             {
-                navMeshAgent.isStopped = false;
-                navMeshAgent.SetDestination(targetEntity.transform.position);
+                if (navMeshAgent != null && navMeshAgent.enabled)
+                {
+                    navMeshAgent.isStopped = false;
+                    navMeshAgent.SetDestination(targetEntity.transform.position);
+                }
             }
             else
             {
-                navMeshAgent.isStopped = true;
+                if (navMeshAgent != null && navMeshAgent.enabled)
+                {
+                    navMeshAgent.isStopped = true;
+                }
 
                 Collider[] colliders = Physics.OverlapSphere(transform.position, 20f, whatIsTarget);
+
+                float closestDistance = float.MaxValue;
+                LivingEntity nearestPlayer = null;
 
                 foreach (Collider collider in colliders)
                 {
                     LivingEntity livingEntity = collider.GetComponent<LivingEntity>();
                     if (livingEntity != null && !livingEntity.dead)
                     {
-                        targetEntity = livingEntity;
-                        break;
+                        float dist = Vector3.Distance(transform.position, collider.transform.position);
+                        if (dist < closestDistance)
+                        {
+                            closestDistance = dist;
+                            nearestPlayer = livingEntity;
+                        }
                     }
                 }
+                targetEntity = nearestPlayer;
             }
-            // 0.25초 주기로 처리 반복
+
+            hasTargetNetwork.Value = hasTarget;
+
             yield return new WaitForSeconds(0.25f);
         }
     }
 
     // 데미지를 입었을 때 실행할 처리
     public override void OnDamage(float damage, Vector3 hitPoint, Vector3 hitNormal) {
-        if(!dead)
+        if (!IsServer) return;
+
+        if (!dead)
+        {
+            PlayHitEffectClientRpc(hitPoint, hitNormal);
+        }
+
+        base.OnDamage(damage, hitPoint, hitNormal);
+    }
+
+    [ClientRpc]
+    private void PlayHitEffectClientRpc(Vector3 hitPoint, Vector3 hitNormal) {
+        if (hitEffect != null)
         {
             hitEffect.transform.position = hitPoint;
             hitEffect.transform.rotation = Quaternion.LookRotation(hitNormal);
             hitEffect.Play();
-
-            zombieAudioPlayer.PlayOneShot(hitSound);
         }
 
-        // LivingEntity의 OnDamage()를 실행하여 데미지 적용
-        base.OnDamage(damage, hitPoint, hitNormal);
+        if (zombieAudioPlayer != null && hitSound != null)
+        {
+            zombieAudioPlayer.PlayOneShot(hitSound);
+        }
     }
 
     // 사망 처리
     public override void Die() {
-        // LivingEntity의 Die()를 실행하여 기본 사망 처리 실행
-        base.Die();
+        if (!IsServer) return;
 
+        base.Die();
+        DieClientRpc();
+    }
+
+    [ClientRpc]
+    private void DieClientRpc() {
         Collider[] zombieColliders = GetComponents<Collider>();
-        foreach(Collider collider in zombieColliders)
+        foreach (Collider collider in zombieColliders)
         {
             collider.enabled = false;
         }
 
-        navMeshAgent.isStopped = true;
-        navMeshAgent.enabled = false;
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.isStopped = true;
+            navMeshAgent.enabled = false;
+        }
 
-        zombieAnimator.SetTrigger("Die");
-        zombieAudioPlayer.PlayOneShot(deathSound);
+        if (zombieAnimator != null) zombieAnimator.SetTrigger("Die");
+        if (zombieAudioPlayer != null && deathSound != null) zombieAudioPlayer.PlayOneShot(deathSound);
     }
 
     private void OnTriggerStay(Collider other) {
-        // 트리거 충돌한 상대방 게임 오브젝트가 추적 대상이라면 공격 실행
-        if(!dead && Time.time >= lastAttackTime + timeBetAttack)
+        if (!IsServer) return;
+
+        if (!dead && Time.time >= lastAttackTime + timeBetAttack)
         {
             LivingEntity attackTarget = other.GetComponent<LivingEntity>();
 
-            if(attackTarget != null && attackTarget == targetEntity)
+            if (attackTarget != null && attackTarget == targetEntity)
             {
                 lastAttackTime = Time.time;
 

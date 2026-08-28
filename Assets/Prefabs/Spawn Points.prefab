@@ -102,6 +102,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4701262881481600}
+  - component: {fileID: 3340141792534345743}
   - component: {fileID: 803345265660424962}
   m_Layer: 0
   m_Name: Spawn Points
@@ -129,6 +130,32 @@ Transform:
   - {fileID: 4984717578414758}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3340141792534345743
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1738932568335938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 2292950133
+  InScenePlacedSourceGlobalObjectIdHash: 805179221
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  m_InScenePlaced: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!114 &803345265660424962
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -141,6 +168,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: caf60ce9abab742a98a648d974181076, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ZombieSpawner
+  ShowTopMostFoldoutHeaderGroup: 1
   zombiePrefab: {fileID: 6399297939488698989, guid: 98df61c5b1a1e7840ac0a742e4b7efef, type: 3}
   zombieDatas:
   - {fileID: 11400000, guid: a213655071a832145a649229e94007cd, type: 2}
@@ -151,6 +179,16 @@ MonoBehaviour:
   - {fileID: 4008875457194926}
   - {fileID: 4821426734562698}
   - {fileID: 4984717578414758}
+  waveNetwork:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+  zombieCountNetwork:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
 --- !u!1 &1825065516638574
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,7 +1,8 @@
-﻿using UnityEngine;
+using Unity.Netcode;
+using UnityEngine;
 
-// 총알을 충전하는 아이템
-public class AmmoPack : MonoBehaviour, IItem {
+// 총알을 충전하는 아이템 (Netcode 호환)
+public class AmmoPack : NetworkBehaviour, IItem {
     public int ammo = 30; // 충전할 총알 수
 
     public void Use(GameObject target) {
@@ -15,7 +16,15 @@ public class AmmoPack : MonoBehaviour, IItem {
             playerShooter.gun.ammoRemain += ammo;
         }
 
-        // 사용되었으므로, 자신을 파괴
-        Destroy(gameObject);
+        // 서버 권한으로 자신을 Despawn
+        NetworkObject netObj = GetComponent<NetworkObject>();
+        if (netObj != null && netObj.IsSpawned)
+        {
+            netObj.Despawn();
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 }
